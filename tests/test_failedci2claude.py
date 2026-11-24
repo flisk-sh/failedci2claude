@@ -161,6 +161,22 @@ def test_a_failed_check_and_a_conflict_are_one_report(env):
     assert "failed checks: Test" in reason and "merge conflicts with main" in reason
 
 
+def test_reports_each_failing_pr_when_one_head_targets_multiple_bases(env):
+    run, set_prs, _ = env
+    set_prs(
+        pr(7, "feature-a", [FAIL]),
+        {**pr(8, "feature-a", [FAIL]), "baseRefName": "release"},
+        {**pr(9, "feature-a", [OK]), "baseRefName": "next"},
+    )
+    notice = run()
+    assert notice, "a green PR must not hide failures for the same branch"
+    reason = json.loads(notice)["reason"]
+    assert URL.format(n=7) in reason
+    assert URL.format(n=8) in reason
+    assert URL.format(n=9) not in reason
+    assert run() == ""
+
+
 def test_an_unknown_merge_state_is_not_a_conflict(env):
     run, set_prs, _ = env
     set_prs(pr(7, "feature-a", [OK], mergeable="UNKNOWN", mergeStateStatus="UNKNOWN"))

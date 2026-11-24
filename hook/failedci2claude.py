@@ -61,7 +61,8 @@ def main():
         if out.returncode != 0:
             log(f"gh pr list failed: {(out.stderr or '').strip()[:160]}")
             return
-        prs = {p["headRefName"]: p for p in json.loads(out.stdout)}
+        # A single head branch can have open PRs against different bases.
+        prs = [(p["headRefName"], p) for p in json.loads(out.stdout)]
     except Exception as e:
         log(f"gh error: {e}")
         return
@@ -70,9 +71,8 @@ def main():
     except Exception:
         seen = []
     reasons = []
-    for branch in branches:
-        pr = prs.get(branch)
-        if not pr:
+    for branch, pr in prs:
+        if branch not in branches:
             continue
         failing = sorted({
             c.get("name") or c.get("context") or "?"
